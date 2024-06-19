@@ -7,7 +7,6 @@
 #include "uart1.h"
 #include "swi2c.h"
 //#include <stdint.h>
-
 //#include <stm/stm8s_i2c.h>
 
 #define GREEN_LED_0_PORT GPIOD
@@ -25,7 +24,8 @@
 #define BTN1_PORT GPIOD
 #define BTN1_PIN GPIO_PIN_5
 
-
+#define LM75A_ADDR (0x4E << 1) // Shift left to account for R/W bit
+#define TEMP_REG 0x00
 
 
 
@@ -44,17 +44,33 @@ void init(void)
     GPIO_Init(BTN1_PORT, BTN1_PIN, GPIO_MODE_IN_PU_NO_IT);
     
     
-    
+    // Inicializace funkcí ze source
     swi2c_init();
     init_milis();
     init_uart1();
 }
 
+uint16_t read_temp_LM75A(void) {
+    uint8_t temp_reg = TEMP_REG;
+    uint8_t temp_data[2] = {0, 0};
+
+    // Write to pointer register to set it to temperature register
+    swi2c_write_buf(LM75A_ADDR, 0x00, &temp_reg, 1);
+
+    // Read temperature data
+    swi2c_read_buf(LM75A_ADDR, 0x00, temp_data, 2);
+
+    // Combine MSB and LSB to get full temperature data
+    uint16_t temp = (temp_data[0] << 8) | temp_data[1];
+
+    return temp;
+}
 
 int main(void)  {
 
     init();
 
+    // Pomocí UART zobrazuje adresu scl
     printf("\nScan I2C bus:\n \r");
     printf("Recover: 0x%02X\n \r", swi2c_recover());
     for (uint8_t addr = 0; addr < 128; addr++) {
@@ -66,7 +82,8 @@ int main(void)  {
 
     // Přepínání ledky pomocí tlačítka
     while(1) {
-    
+        
+
         if (GPIO_ReadInputPin(BTN1_PORT, BTN1_PIN) == RESET) {
             GPIO_WriteHigh(RED_LED_1_PORT, RED_LED_1_PIN);
         }
@@ -74,7 +91,13 @@ int main(void)  {
         else {
             GPIO_WriteLow(RED_LED_1_PORT, RED_LED_1_PIN);
         }
+
+        uint16_t temp1 = read_temp_LM75A();
+
+        delay_ms(5000);
+        printf("%d\n\r", temp1*100/256);
     } 
+
 }
 
 
