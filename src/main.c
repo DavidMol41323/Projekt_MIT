@@ -9,6 +9,7 @@
 //#include <stdint.h>
 //#include <stm/stm8s_i2c.h>
 
+
 #define GREEN_LED_0_PORT GPIOD
 #define GREEN_LED_0_PIN GPIO_PIN_0
 
@@ -24,7 +25,7 @@
 #define BTN1_PORT GPIOD
 #define BTN1_PIN GPIO_PIN_5
 
-#define LM75A_ADDR (0x4E << 1) // Shift left to account for R/W bit
+#define LM75A_ADDR (0x49 << 1) // Shift left to account for R/W bit
 #define TEMP_REG 0x00
 
 
@@ -33,10 +34,7 @@
 void init(void)
 {
     CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1);      // taktovani MCU na 16MHz
-
-    
-    
-    
+  
     // Inicializace LEDek
     GPIO_Init(RED_LED_1_PORT, RED_LED_1_PIN, GPIO_MODE_OUT_PP_LOW_SLOW);
     
@@ -53,7 +51,7 @@ void init(void)
 uint16_t read_temp_LM75A(void) {
     uint8_t temp_reg = TEMP_REG;
     uint8_t temp_data[2] = {0, 0};
-
+    
     // Write to pointer register to set it to temperature register
     swi2c_write_buf(LM75A_ADDR, 0x00, &temp_reg, 1);
 
@@ -80,22 +78,39 @@ int main(void)  {
     }
     printf("------------- scan end --------------------\n \r");
 
+    bool led_on = false;
+    const int upper_threshold = 300; // Horní práh pro zapnutí LED
+    const int lower_threshold = 290; // Dolní práh pro vypnutí LED
+    
     // Přepínání ledky pomocí tlačítka
     while(1) {
         
 
-        if (GPIO_ReadInputPin(BTN1_PORT, BTN1_PIN) == RESET) {
+/*         if (GPIO_ReadInputPin(BTN1_PORT, BTN1_PIN) == RESET) {
             GPIO_WriteHigh(RED_LED_1_PORT, RED_LED_1_PIN);
         }
             
         else {
             GPIO_WriteLow(RED_LED_1_PORT, RED_LED_1_PIN);
+        } */
+
+        uint16_t raw_temp = read_temp_LM75A();
+        raw_temp = raw_temp>>5;
+        uint16_t temp = (10*raw_temp+4)/8; // Vychází jako 10-ti násobek skutečné teploty
+
+        //delay_ms(2000); // Pro zobrazení adresy
+        delay_ms(25);
+        printf("%d\n\r", temp);
+
+        if (temp > upper_threshold && !led_on){
+            GPIO_WriteHigh(RED_LED_1_PORT, RED_LED_1_PIN);
+            led_on = true;
+        }
+        else if (temp < lower_threshold && led_on) {
+            GPIO_WriteLow(RED_LED_1_PORT, RED_LED_1_PIN);
+            led_on = false;
         }
 
-        uint16_t temp1 = read_temp_LM75A();
-
-        delay_ms(5000);
-        printf("%d\n\r", temp1*100/256);
     } 
 
 }
