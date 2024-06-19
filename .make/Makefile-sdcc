@@ -90,6 +90,9 @@ CFLAGS += --std-sdcc2x
 CFLAGS += -I inc
 CFLAGS += -D F_CPU=$(F_CPU)
 
+# Přidaná cest k library
+CFLAGS += -I lib
+
 
 ifeq ($(IHEX_NODEBUG),)
 	FMT_ELF = --debug --out-fmt-elf
