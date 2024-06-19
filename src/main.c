@@ -1,11 +1,12 @@
 #include <stdbool.h>
 #include <stm8s.h>
-//#include <stdio.h>
+#include <stdio.h>
 #include "main.h"
 #include "milis.h"
 //#include "delay.h"
-//#include "uart1.h"
+#include "uart1.h"
 #include "swi2c.h"
+//#include <stdint.h>
 
 //#include <stm/stm8s_i2c.h>
 
@@ -28,20 +29,25 @@
 
 
 
+
 void init(void)
 {
     CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1);      // taktovani MCU na 16MHz
 
-
+    
+    
+    
+    // Inicializace LEDek
     GPIO_Init(RED_LED_1_PORT, RED_LED_1_PIN, GPIO_MODE_OUT_PP_LOW_SLOW);
     
+    // Inicializace tlačítek
     GPIO_Init(BTN1_PORT, BTN1_PIN, GPIO_MODE_IN_PU_NO_IT);
     
     
     
-    
+    swi2c_init();
     init_milis();
-    //init_uart1();
+    init_uart1();
 }
 
 
@@ -49,6 +55,16 @@ int main(void)  {
 
     init();
 
+    printf("\nScan I2C bus:\n \r");
+    printf("Recover: 0x%02X\n \r", swi2c_recover());
+    for (uint8_t addr = 0; addr < 128; addr++) {
+        if (swi2c_test_slave(addr << 1) == 0) {
+            printf("0x%02X \n \r", addr);
+        }
+    }
+    printf("------------- scan end --------------------\n \r");
+
+    // Přepínání ledky pomocí tlačítka
     while(1) {
     
         if (GPIO_ReadInputPin(BTN1_PORT, BTN1_PIN) == RESET) {
@@ -58,7 +74,7 @@ int main(void)  {
         else {
             GPIO_WriteLow(RED_LED_1_PORT, RED_LED_1_PIN);
         }
-    }
+    } 
 }
 
 
