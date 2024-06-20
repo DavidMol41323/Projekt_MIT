@@ -111,11 +111,68 @@ uint16_t read_temp_LM75A(void) {
     return temp;
 }
 
+// Definice struktury SegmentPin, která obsahuje ukazatele na port a pin
+typedef struct {
+    GPIO_TypeDef* port;  // Ukazatel na GPIO port 
+    GPIO_Pin_TypeDef pin; // Typ pinu GPIO 
+} SegmentPin;
+
+// Inicializace pole segment1, které obsahuje 7 SegmentPin struktur pro každý segment 7-segmentového displeje
+SegmentPin segment1[7] = {
+    {SEGMENT1_PORT_1, SEGMENT1_PIN_1},  // Segment A
+    {SEGMENT1_PORT_2, SEGMENT1_PIN_2},  // Segment B
+    {SEGMENT1_PORT_3, SEGMENT1_PIN_3},  // Segment C
+    {SEGMENT1_PORT_4, SEGMENT1_PIN_4},  // Segment D
+    {SEGMENT1_PORT_5, SEGMENT1_PIN_5},  // Segment E
+    {SEGMENT1_PORT_6, SEGMENT1_PIN_6},  // Segment F
+    {SEGMENT1_PORT_7, SEGMENT1_PIN_7}   // Segment G
+};
+
+// Inicializace pole segment2, které obsahuje 7 SegmentPin struktur pro druhý 7-segmentový displej
+SegmentPin segment2[7] = {
+    {SEGMENT2_PORT_1, SEGMENT2_PIN_1},  // Segment A
+    {SEGMENT2_PORT_2, SEGMENT2_PIN_2},  // Segment B
+    {SEGMENT2_PORT_3, SEGMENT2_PIN_3},  // Segment C
+    {SEGMENT2_PORT_4, SEGMENT2_PIN_4},  // Segment D
+    {SEGMENT2_PORT_5, SEGMENT2_PIN_5},  // Segment E
+    {SEGMENT2_PORT_6, SEGMENT2_PIN_6},  // Segment F
+    {SEGMENT2_PORT_7, SEGMENT2_PIN_7}   // Segment G
+};
+
+// Funkce set_segment pro nastavení segmentů pro zobrazení čísla
+void set_segment(SegmentPin* segment, int number) {
+    // Statické pole segment_map, které definuje, které segmenty jsou zapnuté (0) nebo vypnuté (1) pro čísla 0-9
+    static const uint8_t segment_map[10][7] = {
+        {0, 0, 0, 0, 0, 1, 0}, // 0: Zapne A, B, C, D, E, F, a vypne G
+        {1, 0, 0, 1, 1, 1, 1}, // 1: Zapne B, C a vypne ostatní segmenty
+        {0, 0, 1, 0, 0, 0, 1}, // 2: Zapne A, B, D, E, G a vypne C, F
+        {0, 0, 0, 0, 1, 0, 1}, // 3: Zapne A, B, C, D, G a vypne E, F
+        {1, 0, 0, 1, 1, 0, 0}, // 4: Zapne B, C, F, G a vypne A, D, E
+        {0, 1, 0, 0, 1, 0, 0}, // 5: Zapne A, C, D, F, G a vypne B, E
+        {0, 1, 0, 0, 0, 0, 0}, // 6: Zapne A, C, D, E, F, G a vypne B
+        {0, 0, 0, 1, 1, 1, 1}, // 7: Zapne A, B, C a vypne D, E, F, G
+        {0, 0, 0, 0, 0, 0, 0}, // 8: Zapne všechny segmenty
+        {0, 0, 0, 0, 1, 0, 0}  // 9: Zapne A, B, C, D, F, G a vypne E
+    };
+
+    // Pro každý ze 7 segmentů
+    for (int i = 0; i < 7; i++) {
+        // Pokud je hodnota v segment_map pro dané číslo 0, zapne segment
+        if (segment_map[number][i]) {
+            GPIO_WriteHigh(segment[i].port, segment[i].pin);  // Zapnutí segmentu (výstup na vysoké úrovni)
+        } else {
+            GPIO_WriteLow(segment[i].port, segment[i].pin);   // Vypnutí segmentu (výstup na nízké úrovni)
+        }
+    }
+}
+
 
 int main(void)  {
 
     init();
 
+
+    
     // Pomocí UART zobrazuje adresu scl
     printf("\nScan I2C bus:\n \r");
     printf("Recover: 0x%02X\n \r", swi2c_recover());
@@ -130,13 +187,10 @@ int main(void)  {
     const int upper_threshold = 260; // Horní práh pro zapnutí LED
     const int lower_threshold = 255; // Dolní práh pro vypnutí LED
     
-    GPIO_WriteLow(SEGMENT1_PORT_1, SEGMENT1_PIN_1);
-    GPIO_WriteLow(SEGMENT1_PORT_2, SEGMENT1_PIN_2);
-    GPIO_WriteLow(SEGMENT2_PORT_3, SEGMENT2_PIN_3);
-    GPIO_WriteLow(SEGMENT1_PORT_4, SEGMENT1_PIN_4);
-    GPIO_WriteLow(SEGMENT1_PORT_5, SEGMENT1_PIN_5);
-    GPIO_WriteLow(SEGMENT1_PORT_6, SEGMENT1_PIN_6);
-    GPIO_WriteLow(SEGMENT2_PORT_7, SEGMENT2_PIN_7); 
+    for (int i = 0; i < 10; i++) {
+        set_segment(segment1, i);
+        delay_ms(500);
+    }
 
     // Přepínání ledky pomocí tlačítka
     while(1) {
@@ -151,12 +205,19 @@ int main(void)  {
             GPIO_WriteLow(ON_OFF_PORT, ON_OFF_PIN);
         } */
 
-        uint16_t raw_temp = read_temp_LM75A();
-        raw_temp = raw_temp>>5;
+        uint16_t raw_temp = read_temp_LM75A(); // Čtení teploty
+        raw_temp = raw_temp>>5; // Posun o 5 bit
         uint16_t temp = (10*raw_temp+4)/8; // Vychází jako 10-ti násobek skutečné teploty
+        uint16_t real_temp = temp / 10;
+
+        // Zjištění 1. a 2. cifry pro 1. a 2. segment
+        uint16_t temp_1 = real_temp / 10; // Celé dělení 10, tj. 2
+        uint16_t temp_2 = real_temp % 10; // Zbytek po dělení 10, tj. 4
+        
+        set_segment(segment1, temp_2);
 
         //delay_ms(2000); // Pro zobrazení adresy
-        delay_ms(25);
+        delay_ms(500);
         printf("%d\n\r", temp);
 
 /*         if (temp > upper_threshold && !led_on){
