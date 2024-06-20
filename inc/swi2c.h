@@ -16,10 +16,10 @@ editlist:
 
 // ---- USER EDIT SECTION ----
 // select GPIOs
-#define SCL_GPIO GPIOD
-#define SCL_PIN GPIO_PIN_3
-#define SDA_GPIO GPIOC
-#define SDA_PIN GPIO_PIN_4
+#define SCL_GPIO GPIOE
+#define SCL_PIN GPIO_PIN_2
+#define SDA_GPIO GPIOE
+#define SDA_PIN GPIO_PIN_1
 
 // coarse timing parameters (~us) 
 #define SWI2C_START_STOP_TIME 5

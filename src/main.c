@@ -10,38 +10,85 @@
 //#include <stm/stm8s_i2c.h>
 
 
+
+// Definice LED
 #define GREEN_LED_0_PORT GPIOD
 #define GREEN_LED_0_PIN GPIO_PIN_0
 
 #define RED_LED_1_PORT GPIOD
 #define RED_LED_1_PIN GPIO_PIN_6
-/* #define RED_LED_2_PORT GPIOD
-#define RED_LED_2_PIN GPIO_PIN_2
-#define RED_LED_3_PORT GPIOD
-#define RED_LED_3_PIN GPIO_PIN_3
-#define RED_LED_4_PORT GPIOD
-#define RED_LED_4_PIN GPIO_PIN_4 */
 
-#define BTN1_PORT GPIOD
-#define BTN1_PIN GPIO_PIN_5
+
+// Definice tlačítek
+/* #define BTN1_PORT GPIOE
+#define BTN1_PIN GPIO_PIN_1 */
 
 #define LM75A_ADDR (0x49 << 1) // Shift left to account for R/W bit
 #define TEMP_REG 0x00
 
+// Definice 7 segmentu 1
+#define SEGMENT1_PORT_1 GPIOG 
+#define SEGMENT1_PIN_1 GPIO_PIN_0
+#define SEGMENT1_PORT_2 GPIOC 
+#define SEGMENT1_PIN_2 GPIO_PIN_2
+#define SEGMENT1_PORT_3 GPIOC 
+#define SEGMENT1_PIN_3 GPIO_PIN_3
+#define SEGMENT1_PORT_4 GPIOC 
+#define SEGMENT1_PIN_4 GPIO_PIN_1
+#define SEGMENT1_PORT_5 GPIOE 
+#define SEGMENT1_PIN_5 GPIO_PIN_0
+#define SEGMENT1_PORT_6 GPIOD 
+#define SEGMENT1_PIN_6 GPIO_PIN_5
+#define SEGMENT1_PORT_7 GPIOD 
+#define SEGMENT1_PIN_7 GPIO_PIN_6
+
+// Definicie 7 segmentu 2
+#define SEGMENT2_PORT_1 GPIOD 
+#define SEGMENT2_PIN_1 GPIO_PIN_1
+#define SEGMENT2_PORT_2 GPIOD 
+#define SEGMENT2_PIN_2 GPIO_PIN_3
+#define SEGMENT2_PORT_3 GPIOC 
+#define SEGMENT2_PIN_3 GPIO_PIN_4
+#define SEGMENT2_PORT_4 GPIOE 
+#define SEGMENT2_PIN_4 GPIO_PIN_5
+#define SEGMENT2_PORT_5 GPIOC 
+#define SEGMENT2_PIN_5 GPIO_PIN_6
+#define SEGMENT2_PORT_6 GPIOC 
+#define SEGMENT2_PIN_6 GPIO_PIN_7
+#define SEGMENT2_PORT_7 GPIOC 
+#define SEGMENT2_PIN_7 GPIO_PIN_5
 
 
 
 void init(void)
 {
     CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1);      // taktovani MCU na 16MHz
-  
+    
+
     // Inicializace LEDek
     GPIO_Init(RED_LED_1_PORT, RED_LED_1_PIN, GPIO_MODE_OUT_PP_LOW_SLOW);
     
     // Inicializace tlačítek
-    GPIO_Init(BTN1_PORT, BTN1_PIN, GPIO_MODE_IN_PU_NO_IT);
+    //GPIO_Init(BTN1_PORT, BTN1_PIN, GPIO_MODE_IN_PU_NO_IT);
     
+    // Inicializace 7 Segmentu 1
+    GPIO_Init(SEGMENT1_PORT_1, SEGMENT1_PIN_1, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT1_PORT_2, SEGMENT1_PIN_2, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT1_PORT_3, SEGMENT1_PIN_3, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT1_PORT_4, SEGMENT1_PIN_4, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT1_PORT_5, SEGMENT1_PIN_5, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT1_PORT_6, SEGMENT1_PIN_6, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT1_PORT_7, SEGMENT1_PIN_7, GPIO_MODE_OUT_PP_HIGH_SLOW);
     
+    // Inicializace 7 Segmentu 2
+    GPIO_Init(SEGMENT2_PORT_1, SEGMENT2_PIN_1, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT2_PORT_2, SEGMENT2_PIN_2, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT2_PORT_3, SEGMENT2_PIN_3, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT2_PORT_4, SEGMENT2_PIN_4, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT2_PORT_5, SEGMENT2_PIN_5, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT2_PORT_6, SEGMENT2_PIN_6, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    GPIO_Init(SEGMENT2_PORT_7, SEGMENT2_PIN_7, GPIO_MODE_OUT_PP_HIGH_SLOW);
+
     // Inicializace funkcí ze source
     swi2c_init();
     init_milis();
@@ -64,6 +111,7 @@ uint16_t read_temp_LM75A(void) {
     return temp;
 }
 
+
 int main(void)  {
 
     init();
@@ -79,19 +127,28 @@ int main(void)  {
     printf("------------- scan end --------------------\n \r");
 
     bool led_on = false;
-    const int upper_threshold = 300; // Horní práh pro zapnutí LED
-    const int lower_threshold = 290; // Dolní práh pro vypnutí LED
+    const int upper_threshold = 260; // Horní práh pro zapnutí LED
+    const int lower_threshold = 255; // Dolní práh pro vypnutí LED
     
+    GPIO_WriteLow(SEGMENT1_PORT_1, SEGMENT1_PIN_1);
+    GPIO_WriteLow(SEGMENT1_PORT_2, SEGMENT1_PIN_2);
+    GPIO_WriteLow(SEGMENT2_PORT_3, SEGMENT2_PIN_3);
+    GPIO_WriteLow(SEGMENT1_PORT_4, SEGMENT1_PIN_4);
+    GPIO_WriteLow(SEGMENT1_PORT_5, SEGMENT1_PIN_5);
+    GPIO_WriteLow(SEGMENT1_PORT_6, SEGMENT1_PIN_6);
+    GPIO_WriteLow(SEGMENT2_PORT_7, SEGMENT2_PIN_7); 
+
     // Přepínání ledky pomocí tlačítka
     while(1) {
         
+        
 
 /*         if (GPIO_ReadInputPin(BTN1_PORT, BTN1_PIN) == RESET) {
-            GPIO_WriteHigh(RED_LED_1_PORT, RED_LED_1_PIN);
+            GPIO_WriteHigh(ON_OFF_PORT, ON_OFF_PIN);
         }
             
         else {
-            GPIO_WriteLow(RED_LED_1_PORT, RED_LED_1_PIN);
+            GPIO_WriteLow(ON_OFF_PORT, ON_OFF_PIN);
         } */
 
         uint16_t raw_temp = read_temp_LM75A();
@@ -102,16 +159,16 @@ int main(void)  {
         delay_ms(25);
         printf("%d\n\r", temp);
 
-        if (temp > upper_threshold && !led_on){
+/*         if (temp > upper_threshold && !led_on){
             GPIO_WriteHigh(RED_LED_1_PORT, RED_LED_1_PIN);
             led_on = true;
         }
         else if (temp < lower_threshold && led_on) {
             GPIO_WriteLow(RED_LED_1_PORT, RED_LED_1_PIN);
             led_on = false;
-        }
+        }*/
 
-    } 
+    }  
 
 }
 
