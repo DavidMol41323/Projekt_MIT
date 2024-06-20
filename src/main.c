@@ -20,8 +20,8 @@
 
 
 // Definice tlačítek
-/* #define BTN1_PORT GPIOE
-#define BTN1_PIN GPIO_PIN_1 */
+#define BTN1_PORT GPIOB
+#define BTN1_PIN GPIO_PIN_1
 
 #define LM75A_ADDR (0x49 << 1) // Shift left to account for R/W bit
 #define TEMP_REG 0x00
@@ -69,7 +69,7 @@ void init(void)
     GPIO_Init(RED_LED_1_PORT, RED_LED_1_PIN, GPIO_MODE_OUT_PP_LOW_SLOW);
     
     // Inicializace tlačítek
-    //GPIO_Init(BTN1_PORT, BTN1_PIN, GPIO_MODE_IN_PU_NO_IT);
+    GPIO_Init(BTN1_PORT, BTN1_PIN, GPIO_MODE_IN_PU_NO_IT);
     
     // Inicializace 7 Segmentu 1
     GPIO_Init(SEGMENT1_PORT_1, SEGMENT1_PIN_1, GPIO_MODE_OUT_PP_HIGH_SLOW);
@@ -166,6 +166,17 @@ void set_segment(SegmentPin* segment, int number) {
     }
 }
 
+// Funkce pro přepínání módu
+int mod(void) {
+    static int state = 0;  // Statická proměnná pro uchování stavu (0 nebo 1)
+    int button_state = GPIO_ReadInputPin(BTN1_PORT, BTN1_PIN); // Čtení stavu tlačítka
+
+    if (button_state == RESET) { // Tlačítko stisknuto (LOW stav)
+        state = 1 - state;  // Přepnutí stavu mezi 0 a 1
+    }
+
+    return state; // Vrácení aktuálního stavu (0 nebo 1)
+}
 
 int main(void)  {
 
@@ -210,12 +221,20 @@ int main(void)  {
         uint16_t temp = (10*raw_temp+4)/8; // Vychází jako 10-ti násobek skutečné teploty
         uint16_t real_temp = temp / 10;
 
+        uint16_t current_mod = mod();
+        if (current_mod == 0) {
         // Zjištění 1. a 2. cifry pro 1. a 2. segment
         uint16_t temp_1 = real_temp / 10; // Celé dělení 10
         uint16_t temp_2 = real_temp % 10; // Zbytek po dělení 10
         
         set_segment(segment1, temp_1);
         set_segment(segment2, temp_2);
+        }
+        else if (current_mod == 1) {
+            set_segment(segment1, 0);
+            set_segment(segment2, 0);
+        }
+        
 
         //delay_ms(2000); // Pro zobrazení adresy
         delay_ms(500);
