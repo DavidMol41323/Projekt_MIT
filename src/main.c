@@ -198,9 +198,14 @@ int main(void)  {
     const int upper_threshold = 260; // Horní práh pro zapnutí LED
     const int lower_threshold = 255; // Dolní práh pro vypnutí LED
     
+    // Načítání
     for (int i = 0; i < 10; i++) {
         set_segment(segment1, i);
-        delay_ms(500);
+        delay_ms(50);
+        for (int i = 0; i < 9; i++) {
+            set_segment(segment2, i);
+            delay_ms(50);
+        }
     }
 
     // Přepínání ledky pomocí tlačítka
