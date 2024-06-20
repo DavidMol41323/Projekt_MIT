@@ -211,10 +211,11 @@ int main(void)  {
         uint16_t real_temp = temp / 10;
 
         // Zjištění 1. a 2. cifry pro 1. a 2. segment
-        uint16_t temp_1 = real_temp / 10; // Celé dělení 10, tj. 2
-        uint16_t temp_2 = real_temp % 10; // Zbytek po dělení 10, tj. 4
+        uint16_t temp_1 = real_temp / 10; // Celé dělení 10
+        uint16_t temp_2 = real_temp % 10; // Zbytek po dělení 10
         
-        set_segment(segment1, temp_2);
+        set_segment(segment1, temp_1);
+        set_segment(segment2, temp_2);
 
         //delay_ms(2000); // Pro zobrazení adresy
         delay_ms(500);
