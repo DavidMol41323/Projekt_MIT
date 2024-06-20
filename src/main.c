@@ -15,13 +15,19 @@
 #define GREEN_LED_0_PORT GPIOD
 #define GREEN_LED_0_PIN GPIO_PIN_0
 
-#define RED_LED_1_PORT GPIOD
-#define RED_LED_1_PIN GPIO_PIN_6
+#define RED_LED_PORT GPIOB
+#define RED_LED_PIN GPIO_PIN_4
+#define BLUE_LED_PORT GPIOB
+#define BLUE_LED_PIN GPIO_PIN_5
 
 
 // Definice tlačítek
 #define BTN1_PORT GPIOB
 #define BTN1_PIN GPIO_PIN_1
+#define BTN2_PORT GPIOB
+#define BTN2_PIN GPIO_PIN_2
+#define BTN3_PORT GPIOB
+#define BTN3_PIN GPIO_PIN_3
 
 #define LM75A_ADDR (0x49 << 1) // Shift left to account for R/W bit
 #define TEMP_REG 0x00
@@ -66,10 +72,13 @@ void init(void)
     
 
     // Inicializace LEDek
-    GPIO_Init(RED_LED_1_PORT, RED_LED_1_PIN, GPIO_MODE_OUT_PP_LOW_SLOW);
+    GPIO_Init(RED_LED_PORT, RED_LED_PIN, GPIO_MODE_OUT_PP_LOW_SLOW);
+    GPIO_Init(BLUE_LED_PORT, BLUE_LED_PIN, GPIO_MODE_OUT_PP_LOW_SLOW);
     
     // Inicializace tlačítek
     GPIO_Init(BTN1_PORT, BTN1_PIN, GPIO_MODE_IN_PU_NO_IT);
+    GPIO_Init(BTN2_PORT, BTN2_PIN, GPIO_MODE_IN_PU_NO_IT);
+    GPIO_Init(BTN3_PORT, BTN3_PIN, GPIO_MODE_IN_PU_NO_IT);
     
     // Inicializace 7 Segmentu 1
     GPIO_Init(SEGMENT1_PORT_1, SEGMENT1_PIN_1, GPIO_MODE_OUT_PP_HIGH_SLOW);
@@ -169,20 +178,21 @@ void set_segment(SegmentPin* segment, int number) {
 // Funkce pro přepínání módu
 int mod(void) {
     static int state = 0;  // Statická proměnná pro uchování stavu (0 nebo 1)
-    int button_state = GPIO_ReadInputPin(BTN1_PORT, BTN1_PIN); // Čtení stavu tlačítka
+    static uint16_t last_button_state;
+    uint16_t button_state = GPIO_ReadInputPin(BTN1_PORT, BTN1_PIN); // Čtení stavu tlačítka
 
-    if (button_state == RESET) { // Tlačítko stisknuto (LOW stav)
+    if (button_state == RESET && last_button_state == SET) { // Tlačítko stisknuto (LOW stav)
         state = 1 - state;  // Přepnutí stavu mezi 0 a 1
     }
 
+    last_button_state = button_state;
+    delay_ms(10);
     return state; // Vrácení aktuálního stavu (0 nebo 1)
 }
+   
 
-int main(void)  {
-
+int main(void) {
     init();
-
-
     
     // Pomocí UART zobrazuje adresu scl
     printf("\nScan I2C bus:\n \r");
@@ -209,55 +219,100 @@ int main(void)  {
     }
 
     // Přepínání ledky pomocí tlačítka
-    while(1) {
-        
-        
+    uint16_t needed_temp = 10;  // Inicializace potřebné teploty mimo cyklus
+    uint16_t current_mod = 0;   // Inicializace módu
 
-/*         if (GPIO_ReadInputPin(BTN1_PORT, BTN1_PIN) == RESET) {
-            GPIO_WriteHigh(ON_OFF_PORT, ON_OFF_PIN);
-        }
-            
-        else {
-            GPIO_WriteLow(ON_OFF_PORT, ON_OFF_PIN);
-        } */
+    // Proměnné pro udržení stavu tlačítek mezi cykly
+    static uint16_t last_button_state = RESET;  
+    static uint16_t last_button_plus_state = RESET;  
+    static uint16_t last_button_minus_state = RESET;
 
+    while (1) {
         uint16_t raw_temp = read_temp_LM75A(); // Čtení teploty
-        raw_temp = raw_temp>>5; // Posun o 5 bit
-        uint16_t temp = (10*raw_temp+4)/8; // Vychází jako 10-ti násobek skutečné teploty
+        raw_temp = raw_temp >> 5; // Posun o 5 bit
+        uint16_t temp = (10 * raw_temp + 4) / 8; // Vychází jako 10-ti násobek skutečné teploty
         uint16_t real_temp = temp / 10;
 
-        uint16_t current_mod = mod();
+        // Získání aktuálního módu
+        current_mod = mod();
         if (current_mod == 0) {
-        // Zjištění 1. a 2. cifry pro 1. a 2. segment
-        uint16_t temp_1 = real_temp / 10; // Celé dělení 10
-        uint16_t temp_2 = real_temp % 10; // Zbytek po dělení 10
+            // Mód zobrazování teploty na segmentovém displeji
+            uint16_t temp_1 = real_temp / 10; // První číslice teploty
+            uint16_t temp_2 = real_temp % 10; // Druhá číslice teploty
+            
+            set_segment(segment1, temp_1);
+            set_segment(segment2, temp_2);
+        } else if (current_mod == 1) {
+            // Mód nastavení požadované teploty
+            int button_state;
+
+            // Cyklus pro nastavení požadované teploty
+            while (1) {
+                button_state = GPIO_ReadInputPin(BTN1_PORT, BTN1_PIN); // Čtení stavu hlavního tlačítka
+
+                // Detekce změny stavu hlavního tlačítka
+                if (button_state == RESET && last_button_state == SET) {
+                    break; // Opustí cyklus po změně stavu tlačítka z SET na RESET
+                }
+
+                int button_state_plus = GPIO_ReadInputPin(BTN2_PORT, BTN2_PIN); // Čtení stavu tlačítka plus
+                int button_state_minus = GPIO_ReadInputPin(BTN3_PORT, BTN3_PIN); // Čtení stavu tlačítka minus
+
+                // Aktualizace potřebné teploty podle stisknutých tlačítek plus a minus
+                if (button_state_plus == RESET && last_button_plus_state == SET) {  // Přičíst k needed_temp 1
+                    needed_temp += 1;
+                    last_button_plus_state = button_state_plus;
+                } else if (button_state_minus == RESET && last_button_minus_state == SET) { // Odečíst od needed_temp 1
+                    needed_temp -= 1;
+                    last_button_minus_state = button_state_minus;
+                }
+
+                // Ochrana proti nastavení potřebné teploty pod 0
+                if (needed_temp < 0) {
+                    needed_temp = 0;
+                }
+
+                // Rozdělení potřebné teploty na desítky a jednotky
+                uint16_t needed_temp_1 = needed_temp / 10;
+                uint16_t needed_temp_2 = needed_temp % 10;
+                
+                // Nastavení segmentů pro zobrazení potřebné teploty
+                set_segment(segment1, needed_temp_1);
+                set_segment(segment2, needed_temp_2);
+
+                delay_ms(10); // Zpoždění pro stabilitu
+
+                // Aktualizace stavů tlačítek plus a minus
+                last_button_plus_state = button_state_plus;
+                last_button_minus_state = button_state_minus;
+                last_button_state = button_state;
+
+                // Výpis potřebné teploty (pro kontrolu)
+                printf("needed temp: %d\n\r", needed_temp);
+            }
+        }
         
-        set_segment(segment1, temp_1);
-        set_segment(segment2, temp_2);
-        }
-        else if (current_mod == 1) {
-            set_segment(segment1, 0);
-            set_segment(segment2, 0);
-        }
+        delay_ms(50); // Zpoždění mezi cykly
         
+        // Výpis aktuální teploty (pro kontrolu)
+        printf("real temp: %d\n\r", real_temp);
+        
+        
+            // Aktualizace podmínek pro LED
+        uint16_t up_needed_temp = needed_temp + 1;
+        uint16_t down_needed_temp = needed_temp - 1;
 
-        //delay_ms(2000); // Pro zobrazení adresy
-        delay_ms(500);
-        printf("%d\n\r", temp);
-
-/*         if (temp > upper_threshold && !led_on){
-            GPIO_WriteHigh(RED_LED_1_PORT, RED_LED_1_PIN);
-            led_on = true;
+        if (real_temp > up_needed_temp) {
+            GPIO_WriteHigh(BLUE_LED_PORT, BLUE_LED_PIN);
+            GPIO_WriteLow(RED_LED_PORT, RED_LED_PIN);
+        } else if (real_temp <= up_needed_temp && real_temp >= down_needed_temp) {
+            GPIO_WriteLow(BLUE_LED_PORT, BLUE_LED_PIN);
+            GPIO_WriteLow(RED_LED_PORT, RED_LED_PIN);
+        } else if (real_temp < down_needed_temp) {
+            GPIO_WriteLow(BLUE_LED_PORT, BLUE_LED_PIN);
+            GPIO_WriteHigh(RED_LED_PORT, RED_LED_PIN);
         }
-        else if (temp < lower_threshold && led_on) {
-            GPIO_WriteLow(RED_LED_1_PORT, RED_LED_1_PIN);
-            led_on = false;
-        }*/
-
-    }  
-
+    }
 }
+    
 
-
-/*-------------------------------  Assert -----------------------------------*/
-#include "__assert__.h"
