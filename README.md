@@ -43,3 +43,6 @@ Hlavní smyčka programu `main()` provádí následující kroky:
 
 ## Blokové schéma
 ![**Obrázek č.3:** Blokové schéma](Blokové_schéma.PNG)
+
+## Závěr
+Projekt byl úspěšně realizován dle předem stanovených cílů. Získané poznatky mohou sloužit jako základ pro budoucí vylepšení a optimalizaci. Zpracování projektu trvalo přibližně 20 hodin.
