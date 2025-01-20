@@ -36,7 +36,7 @@ Hlavní smyčka programu `main()` provádí následující kroky:
 5. **Ladění pomocí UART**: Pro účely ladění a monitorování systému může být využívána komunikace pomocí UART, která umožňuje zobrazovat aktuální teplotu a diagnostické informace na sériové lince.
 
 ## Vývojový diagram
-![**Obrázek č.1:** Vývojový diagram](Vývojovy_diagram.PNG)
+![**Obrázek č.1:** Vývojový diagram](Vývojový_diagram.PNG)
 
 ## Schéma
 ![**Obrázek č.2:** Schéma zapojení](schema.jpg)
